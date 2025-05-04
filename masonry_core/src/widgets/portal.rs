@@ -37,6 +37,10 @@ pub struct Portal<W: Widget + ?Sized> {
     scrollbar_horizontal_visible: bool,
     scrollbar_vertical: WidgetPod<ScrollBar>,
     scrollbar_vertical_visible: bool,
+    // --- MARK: Modified ---
+    /// The direction of the app language. If it's right to left,
+    /// the vertical scrollbar will be placed at the left side of the portal.
+    right_to_left: bool,
 }
 
 // --- MARK: BUILDERS ---
@@ -61,6 +65,7 @@ impl<W: Widget + ?Sized> Portal<W> {
             scrollbar_horizontal_visible: false,
             scrollbar_vertical: WidgetPod::new(ScrollBar::new(Axis::Vertical, 1.0, 1.0)),
             scrollbar_vertical_visible: false,
+            right_to_left: false,
         }
     }
 
@@ -69,31 +74,31 @@ impl<W: Widget + ?Sized> Portal<W> {
         self.viewport_pos
     }
 
-    // TODO - rewrite doc
-    /// Builder-style method for deciding whether to constrain the child vertically.
-    ///
-    /// The default is `false`.
-    ///
-    /// This setting affects how a `Portal` lays out its child.
-    ///
-    /// - When it is `false` (the default), the child does not receive any upper
-    ///   bound on its height: the idea is that the child can be as tall as it
-    ///   wants, and the viewport will somehow get moved around to see all of it.
-    /// - When it is `true`, the viewport's maximum height will be passed down
-    ///   as an upper bound on the height of the child, and the viewport will set
-    ///   its own height to be the same as its child's height.
-    pub fn constrain_vertical(mut self, constrain: bool) -> Self {
-        self.constrain_vertical = constrain;
-        self
-    }
+    // // TODO - rewrite doc
+    // /// Builder-style method for deciding whether to constrain the child vertically.
+    // ///
+    // /// The default is `false`.
+    // ///
+    // /// This setting affects how a `Portal` lays out its child.
+    // ///
+    // /// - When it is `false` (the default), the child does not receive any upper
+    // ///   bound on its height: the idea is that the child can be as tall as it
+    // ///   wants, and the viewport will somehow get moved around to see all of it.
+    // /// - When it is `true`, the viewport's maximum height will be passed down
+    // ///   as an upper bound on the height of the child, and the viewport will set
+    // ///   its own height to be the same as its child's height.
+    // pub fn constrain_vertical(mut self, constrain: bool) -> Self {
+    //     self.constrain_vertical = constrain;
+    //     self
+    // }
 
-    /// Builder-style method for deciding whether to constrain the child horizontally.
-    ///
-    /// The default is `false`.
-    pub fn constrain_horizontal(mut self, constrain: bool) -> Self {
-        self.constrain_horizontal = constrain;
-        self
-    }
+    // /// Builder-style method for deciding whether to constrain the child horizontally.
+    // ///
+    // /// The default is `false`.
+    // pub fn constrain_horizontal(mut self, constrain: bool) -> Self {
+    //     self.constrain_horizontal = constrain;
+    //     self
+    // }
 
     /// Builder-style method to set whether the child must fill the view.
     ///
@@ -102,6 +107,16 @@ impl<W: Widget + ?Sized> Portal<W> {
     /// the `Portal`.
     pub fn content_must_fill(mut self, must_fill: bool) -> Self {
         self.must_fill = must_fill;
+        self
+    }
+
+    // --- MARK: Modified ---
+    /// Builder-style method for setting the right to left direction of the app.
+    /// 
+    /// This will influence whether the vertical scrollbar is placed to the right
+    /// side or to the left side of the portal.
+    pub fn with_rtl(mut self, right_to_left: bool) -> Self {
+        self.right_to_left = right_to_left;
         self
     }
 }
@@ -453,9 +468,12 @@ impl<W: Widget + FromDynWidget + ?Sized> Widget for Portal<W> {
             std::mem::drop(scrollbar);
 
             let scrollbar_size = ctx.run_layout(&mut self.scrollbar_vertical, bc);
+            let x_position = if self.right_to_left { 0.0 } else {
+                portal_size.width - scrollbar_size.width
+            };
             ctx.place_child(
                 &mut self.scrollbar_vertical,
-                Point::new(portal_size.width - scrollbar_size.width, 0.0),
+                Point::new(x_position, 0.0),
             );
         } else {
             ctx.skip_layout(&mut self.scrollbar_vertical);
